@@ -1,0 +1,1 @@
+select p.PRODUCT_ID, gi.ID_VALUE as ERP_ID, sp.SHOPIFY_PRODUCT_ID from good_identification gi join product p on gi.PRODUCT_ID=p.PRODUCT_ID join shopify_product sp on sp.PRODUCT_ID=p.PRODUCT_ID;

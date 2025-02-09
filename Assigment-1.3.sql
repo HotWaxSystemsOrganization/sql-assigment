@@ -1,0 +1,1 @@
+select p.PRODUCT_ID, p.PRODUCT_TYPE_ID, p.INTERNAL_NAME, oi.EXTERNAL_ID as NETSUITE_ID from order_item oi join product p on oi.PRODUCT_ID=p.PRODUCT_ID and (oi.EXTERNAL_ID is null or not oi.EXTERNAL_ID=" ");

@@ -1,0 +1,213 @@
+# SQL Assignment 1
+
+### 1 New Customers Acquired in June 2023
+
+**Business Problem:**  
+The marketing team ran a campaign in June 2023 and wants to see how many new customers signed up during that period.
+
+**Fields to Retrieve:**  
+- `PARTY_ID`  
+- `FIRST_NAME`  
+- `LAST_NAME`  
+- `EMAIL`  
+- `PHONE`  
+- `ENTRY_DATE`
+
+**Sql :** 
+```json
+SELECT 
+    p.PARTY_ID,
+    p.FIRST_NAME,
+    p.LAST_NAME,
+    cm.INFO_STRING AS EMAIL,
+    p.CREATED_STAMP AS ENTRY_DATE,
+    tn.CONTACT_NUMBER AS PHONE
+FROM
+    person p
+        JOIN
+    party_role pr ON p.party_id = pr.party_id
+        AND (pr.ROLE_TYPE_ID = 'CUSTOMER')
+        AND p.CREATED_STAMP BETWEEN '2023-06-1 00:00:00' AND '2023-07-01 00:00:01'
+        JOIN
+    party_contact_mech pcm ON p.PARTY_ID = pcm.PARTY_ID
+        JOIN
+    contact_mech cm ON pcm.CONTACT_MECH_ID = cm.CONTACT_MECH_ID
+        LEFT JOIN
+    telecom_number tn ON cm.CONTACT_MECH_ID = tn.CONTACT_MECH_ID;
+```
+**Cost : 15911**
+
+### 2 List All Active Physical Products
+
+**Business Problem:**  
+Merchandising teams often need a list of all physical products to manage logistics, warehousing, and shipping.
+
+**Fields to Retrieve:**  
+- `PRODUCT_ID`  
+- `PRODUCT_TYPE_ID`  
+- `INTERNAL_NAME`
+
+**Sql :** 
+```json
+  SELECT 
+    p.PRODUCT_ID, p.PRODUCT_TYPE_ID, p.INTERNAL_NAME
+FROM
+    product p
+        JOIN
+    product_type pt ON p.PRODUCT_TYPE_ID = pt.PRODUCT_TYPE_ID
+        AND IS_PHYSICAL = 'Y';
+```
+**Cost : 158702**
+
+### 3 Products Missing NetSuite ID
+
+**Business Problem:**  
+A product cannot sync to NetSuite unless it has a valid NetSuite ID. The OMS needs a list of all products that still need to be created or updated in NetSuite.
+
+**Fields to Retrieve:**  
+- `PRODUCT_ID`  
+- `INTERNAL_NAME`  
+- `PRODUCT_TYPE_ID`  
+- `NETSUITE_ID` (or similar field indicating the NetSuite ID; may be `NULL` or empty if missing)
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**
+
+### 4 Product IDs Across Systems
+
+**Business Problem:**  
+To sync an order or product across multiple systems (e.g., Shopify, HotWax, ERP/NetSuite), the OMS needs to know each system’s unique identifier for that product. This query retrieves the Shopify ID, HotWax ID, and ERP ID (NetSuite ID) for all products.
+
+**Fields to Retrieve:**  
+- `PRODUCT_ID` (internal OMS ID)  
+- `SHOPIFY_ID`  
+- `HOTWAX_ID`  
+- `ERP_ID` or `NETSUITE_ID` (depending on naming)
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**
+
+### 5 Completed Orders in August 2023
+
+**Business Problem:**  
+After running similar reports for a previous month, you now need all completed orders in August 2023 for analysis.
+
+**Fields to Retrieve:**  
+- `PRODUCT_ID`  
+- `PRODUCT_TYPE_ID`  
+- `PRODUCT_STORE_ID`  
+- `TOTAL_QUANTITY`  
+- `INTERNAL_NAME`  
+- `FACILITY_ID`  
+- `EXTERNAL_ID`  
+- `FACILITY_TYPE_ID`  
+- `ORDER_HISTORY_ID`  
+- `ORDER_ID`  
+- `ORDER_ITEM_SEQ_ID`  
+- `SHIP_GROUP_SEQ_ID`
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**
+
+### 6 Newly Created Sales Orders and Payment Methods
+
+**Business Problem:**  
+Finance teams need to see new orders and their payment methods for reconciliation and fraud checks.
+
+**Fields to Retrieve:**  
+- `ORDER_ID`
+- `TOTAL_AMOUNT`
+- `PAYMENT_METHOD`  
+- `Shopify Order ID` (if applicable)
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**
+
+### 7 Payment Captured but Not Shipped
+
+**Business Problem:**  
+Finance teams want to ensure revenue is recognized properly. If payment is captured but no shipment has occurred, it warrants further review.
+
+**Fields to Retrieve:**  
+- `ORDER_ID`  
+- `ORDER_STATUS`  
+- `PAYMENT_STATUS`  
+- `SHIPMENT_STATUS`
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**
+
+### 8 Orders Completed Hourly
+
+**Business Problem:**  
+Operations teams may want to see how orders complete across the day to schedule staffing.
+
+**Fields to Retrieve:**  
+- `TOTAL ORDERS`  
+- `HOUR`
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**
+
+### 9 BOPIS Orders Revenue (Last Year)
+
+**Business Problem:**  
+**BOPIS** (Buy Online, Pickup In Store) is a key retail strategy. Finance wants to know the revenue from BOPIS orders for the previous year.
+
+**Fields to Retrieve:**  
+- `TOTAL ORDERS`  
+- `TOTAL REVENUE`
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**
+
+### 10 Canceled Orders (Last Month)
+
+**Business Problem:**  
+The merchandising team needs to know how many orders were canceled in the previous month and their reasons.
+
+**Fields to Retrieve:**  
+- `TOTAL ORDERS`  
+- `CANCELATION REASON`
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**
+
+### 11 Product Threshold Value
+
+**Business Problem**
+The retailer has set a threshild value for products that are sold online, in order to avoid over selling. 
+
+**Fields to Retrieve:**
+- `PRODUCT ID`
+- `THRESHOLD`
+
+**Sql :** 
+```json
+
+```
+**Cost : 15911**

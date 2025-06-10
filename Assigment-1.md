@@ -13,8 +13,8 @@ The marketing team ran a campaign in June 2023 and wants to see how many new cus
 - `PHONE`  
 - `ENTRY_DATE`
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     p.PARTY_ID,
     p.FIRST_NAME,
@@ -35,7 +35,7 @@ FROM
         LEFT JOIN
     telecom_number tn ON cm.CONTACT_MECH_ID = tn.CONTACT_MECH_ID;
 ```
-**Cost : 15911**
+**COST : 15911**
 
 ### 2 List All Active Physical Products
 
@@ -47,8 +47,8 @@ Merchandising teams often need a list of all physical products to manage logisti
 - `PRODUCT_TYPE_ID`  
 - `INTERNAL_NAME`
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
   SELECT 
     p.PRODUCT_ID, p.PRODUCT_TYPE_ID, p.INTERNAL_NAME
 FROM
@@ -57,7 +57,7 @@ FROM
     product_type pt ON p.PRODUCT_TYPE_ID = pt.PRODUCT_TYPE_ID
         AND IS_PHYSICAL = 'Y';
 ```
-**Cost : 158702**
+**COST : 158702**
 
 ### 3 Products Missing NetSuite ID
 
@@ -70,8 +70,8 @@ A product cannot sync to NetSuite unless it has a valid NetSuite ID. The OMS nee
 - `PRODUCT_TYPE_ID`  
 - `NETSUITE_ID` (or similar field indicating the NetSuite ID; may be `NULL` or empty if missing)
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     p.PRODUCT_ID,
     p.PRODUCT_TYPE_ID,
@@ -85,7 +85,7 @@ FROM
 WHERE
     gi.GOOD_IDENTIFICATION_TYPE_ID = 'ERP_ID';    
 ```
-**Cost : 3.13**
+**COST : 3.13**
 
 ### 4 Product IDs Across Systems
 
@@ -98,8 +98,8 @@ To sync an order or product across multiple systems (e.g., Shopify, HotWax, ERP/
 - `HOTWAX_ID`  
 - `ERP_ID` or `NETSUITE_ID` (depending on naming)
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     p.PRODUCT_ID, gi.ID_VALUE AS ERP_ID, sp.SHOPIFY_PRODUCT_ID
 FROM
@@ -109,7 +109,7 @@ FROM
         JOIN
     shopify_product sp ON sp.PRODUCT_ID = p.PRODUCT_ID;
 ```
-**Cost : 15911**
+**COST : 15911**
 
 ### 5 Completed Orders in August 2023
 
@@ -130,8 +130,8 @@ After running similar reports for a previous month, you now need all completed o
 - `ORDER_ITEM_SEQ_ID`  
 - `SHIP_GROUP_SEQ_ID`
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     p.PRODUCT_ID,
     p.PRODUCT_TYPE_ID,
@@ -158,7 +158,7 @@ FROM
         JOIN
     facility f ON f.FACILITY_ID = oh.ORIGIN_FACILITY_ID;
 ```
-**Cost : 438835640**
+**COST : 438835640**
 
 ### 6 Newly Created Sales Orders and Payment Methods
 
@@ -171,8 +171,8 @@ Finance teams need to see new orders and their payment methods for reconciliatio
 - `PAYMENT_METHOD`  
 - `Shopify Order ID` (if applicable)
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     oh.ORDER_ID,
     oh.GRAND_TOTAL AS TOTAL_AMOUNT,
@@ -185,7 +185,7 @@ FROM
         JOIN
     shopify_shop_order sp ON sp.ORDER_ID = oh.ORDER_ID;    
 ```
-**Cost : 83338**
+**COST : 83338**
 
 ### 7 Payment Captured but Not Shipped
 
@@ -198,8 +198,8 @@ Finance teams want to ensure revenue is recognized properly. If payment is captu
 - `PAYMENT_STATUS`  
 - `SHIPMENT_STATUS`
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     oh.ORDER_ID, oh.STATUS_ID, opp.STATUS_ID, s.STATUS_ID
 FROM
@@ -211,7 +211,7 @@ FROM
         JOIN
     shipment s ON s.SHIPMENT_ID = ii.SHIPMENT_ID;
 ```
-**Cost : 146810**
+**COST : 146810**
 
 ### 8 Orders Completed Hourly
 
@@ -222,8 +222,8 @@ Operations teams may want to see how orders complete across the day to schedule 
 - `TOTAL ORDERS`  
 - `HOUR`
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     DATE(oh.entry_date) AS dates,
     HOUR(oh.entry_date) AS hours,
@@ -236,7 +236,7 @@ WHERE
 GROUP BY dates , hours
 ORDER BY dates , hours;
 ```
-**Cost : 5623**
+**COST : 5623**
 
 ### 9 BOPIS Orders Revenue (Last Year)
 
@@ -247,8 +247,8 @@ ORDER BY dates , hours;
 - `TOTAL ORDERS`  
 - `TOTAL REVENUE`
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     COUNT(oh.order_id) AS TOTAL_ORDERS,
     SUM(oh.grand_total) AS TOTAL_REVENUE
@@ -259,7 +259,7 @@ FROM
         AND oisg.SHIPMENT_METHOD_TYPE_ID = 'STOREPICKUP'
         AND YEAR(oh.entry_date) = YEAR(CURRENT_DATE()) - 1;
 ```
-**Cost : 1896**
+**COST : 1896**
 
 ### 10 Canceled Orders (Last Month)
 
@@ -270,8 +270,8 @@ The merchandising team needs to know how many orders were canceled in the previo
 - `TOTAL ORDERS`  
 - `CANCELATION REASON`
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     COUNT(iid.REASON_ENUM_ID) AS TOTAL_ORDERS,
     iid.REASON_ENUM_ID AS CANCELATION_REASON
@@ -285,7 +285,7 @@ WHERE
         AND YEAR(oh.entry_date) = YEAR(CURRENT_DATE())
 GROUP BY iid.REASON_ENUM_ID;      
 ```
-**Cost : 7752810**
+**COST : 7752810**
 
 ### 11 Product Threshold Value
 
@@ -296,8 +296,8 @@ The retailer has set a threshild value for products that are sold online, in ord
 - `PRODUCT ID`
 - `THRESHOLD`
 
-**Sql :** 
-```sql
+**SQL :** 
+```SQL
 SELECT 
     product_id, minimum_stock AS THRESHOLD
 FROM
@@ -305,4 +305,4 @@ FROM
 WHERE
     minimum_stock IS NOT NULL;
 ```
-**Cost : 152803**
+**COST : 152803**

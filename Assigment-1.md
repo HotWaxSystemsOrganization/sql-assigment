@@ -16,26 +16,38 @@ The marketing team ran a campaign in June 2023 and wants to see how many new cus
 **SQL :** 
 ```SQL
 SELECT 
-    p.PARTY_ID,
-    p.FIRST_NAME,
-    p.LAST_NAME,
-    cm.INFO_STRING AS EMAIL,
-    p.CREATED_STAMP AS ENTRY_DATE,
-    tn.CONTACT_NUMBER AS PHONE
+    per.PARTY_ID,
+    DATE(pr.CREATED_STAMP) AS ENTRY_DATE,
+    per.FIRST_NAME,
+    per.LAST_NAME,
+    (SELECT 
+            cm.INFO_STRING
+        FROM
+            contact_mech cm
+                JOIN
+            party_contact_mech pcm ON per.PARTY_ID = pcm.PARTY_ID
+                AND cm.CONTACT_MECH_ID = pcm.CONTACT_MECH_ID
+                AND CONTACT_MECH_TYPE_ID = 'EMAIL_ADDRESS'
+        LIMIT 1) AS EMAIL,
+    (SELECT 
+            contact_number
+        FROM
+            telecom_number tn
+                JOIN
+            party_contact_mech pcm ON pcm.party_id = per.party_id
+                AND tn.contact_mech_id = pcm.contact_mech_id
+        LIMIT 1) AS PHONE
 FROM
-    person p
+    person AS per
         JOIN
-    party_role pr ON p.party_id = pr.party_id
-        AND (pr.ROLE_TYPE_ID = 'CUSTOMER')
-        AND p.CREATED_STAMP BETWEEN '2023-06-1 00:00:00' AND '2023-07-01 00:00:01'
-        JOIN
-    party_contact_mech pcm ON p.PARTY_ID = pcm.PARTY_ID
-        JOIN
-    contact_mech cm ON pcm.CONTACT_MECH_ID = cm.CONTACT_MECH_ID
-        LEFT JOIN
-    telecom_number tn ON cm.CONTACT_MECH_ID = tn.CONTACT_MECH_ID;
+    party_role AS pr ON per.PARTY_ID = pr.PARTY_ID
+        AND pr.role_type_id = 'CUSTOMER'
+        AND pr.CREATED_STAMP BETWEEN '2023-06-1 00:00:00' AND '2023-07-01 00:00:01';
 ```
-**COST : 15911**
+**Execution Plan:**
+
+![ag-01](https://github.com/user-attachments/assets/b4af2128-5e92-43e7-9bf5-09f3128787d4)
+
 
 ### 2 List All Active Physical Products
 
@@ -50,14 +62,19 @@ Merchandising teams often need a list of all physical products to manage logisti
 **SQL :** 
 ```SQL
   SELECT 
-    p.PRODUCT_ID, p.PRODUCT_TYPE_ID, p.INTERNAL_NAME
+    p.PRODUCT_ID,
+    p.PRODUCT_TYPE_ID,
+    p.INTERNAL_NAME
 FROM
     product p
         JOIN
     product_type pt ON p.PRODUCT_TYPE_ID = pt.PRODUCT_TYPE_ID
         AND IS_PHYSICAL = 'Y';
 ```
-**COST : 158702**
+
+**Execution Plan:**
+
+![ag-02](https://github.com/user-attachments/assets/84e15c47-7687-4be8-bc2c-655968ae4ad9)
 
 ### 3 Products Missing NetSuite ID
 
@@ -78,14 +95,12 @@ SELECT
     p.INTERNAL_NAME,
     gi.ID_VALUE AS NETSUITE_ID
 FROM
-    good_identification gi
-        RIGHT JOIN
-			product p ON gi.PRODUCT_ID = p.PRODUCT_ID
-			AND (gi.ID_VALUE IS NULL OR gi.ID_VALUE = '')
-WHERE
-    gi.GOOD_IDENTIFICATION_TYPE_ID = 'ERP_ID';    
+    product p
+        LEFT JOIN
+	good_identification gi ON gi.PRODUCT_ID = p.PRODUCT_ID AND gi.GOOD_IDENTIFICATION_TYPE_ID = 'ERP_ID' AND (gi.ID_VALUE IS NULL OR gi.ID_VALUE = '');
 ```
-**COST : 3.13**
+
+**Execution Plan:**
 
 ### 4 Product IDs Across Systems
 
@@ -109,7 +124,8 @@ FROM
         JOIN
     shopify_product sp ON sp.PRODUCT_ID = p.PRODUCT_ID;
 ```
-**COST : 15911**
+
+**Execution Plan:**
 
 ### 5 Completed Orders in August 2023
 
@@ -158,7 +174,8 @@ FROM
         JOIN
     facility f ON f.FACILITY_ID = oh.ORIGIN_FACILITY_ID;
 ```
-**COST : 438835640**
+
+**Execution Plan:**
 
 ### 6 Newly Created Sales Orders and Payment Methods
 
@@ -185,7 +202,8 @@ FROM
         JOIN
     shopify_shop_order sp ON sp.ORDER_ID = oh.ORDER_ID;    
 ```
-**COST : 83338**
+
+**Execution Plan:**
 
 ### 7 Payment Captured but Not Shipped
 
@@ -211,7 +229,8 @@ FROM
         JOIN
     shipment s ON s.SHIPMENT_ID = ii.SHIPMENT_ID;
 ```
-**COST : 146810**
+
+**Execution Plan:**
 
 ### 8 Orders Completed Hourly
 
@@ -236,7 +255,8 @@ WHERE
 GROUP BY dates , hours
 ORDER BY dates , hours;
 ```
-**COST : 5623**
+
+**Execution Plan:**
 
 ### 9 BOPIS Orders Revenue (Last Year)
 
@@ -259,7 +279,8 @@ FROM
         AND oisg.SHIPMENT_METHOD_TYPE_ID = 'STOREPICKUP'
         AND YEAR(oh.entry_date) = YEAR(CURRENT_DATE()) - 1;
 ```
-**COST : 1896**
+
+**Execution Plan:**
 
 ### 10 Canceled Orders (Last Month)
 
@@ -285,7 +306,8 @@ WHERE
         AND YEAR(oh.entry_date) = YEAR(CURRENT_DATE())
 GROUP BY iid.REASON_ENUM_ID;      
 ```
-**COST : 7752810**
+
+**Execution Plan:**
 
 ### 11 Product Threshold Value
 
@@ -305,4 +327,5 @@ FROM
 WHERE
     minimum_stock IS NOT NULL;
 ```
-**COST : 152803**
+
+**Execution Plan:**

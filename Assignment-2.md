@@ -22,32 +22,33 @@ Customer Service might need to verify addresses for orders placed or completed i
 - `ORDER_DATE`
 **SQL:** 
 ```sql
-SELECT 
-    oh.ORDER_ID,
-    p.PARTY_ID,
-    CONCAT(p.first_name, ' ', p.last_name) AS CUSTOMER_NAME,
-    pa.ADDRESS1 AS STREET_ADDRESS,
-    pa.CITY,
-    pa.STATE_PROVINCE_GEO_ID AS STATE_PROVINCE,
-    pa.POSTAL_CODE,
-    pa.COUNTRY_GEO_ID COUNTRY_CODE,
-    oh.STATUS_ID AS ORDER_STATUS,
-    oh.ORDER_DATE
-FROM
-    order_header oh
-        JOIN
-    order_contact_mech ocm ON oh.ORDER_ID = ocm.ORDER_ID
-        JOIN
-    party_contact_mech pcm ON pcm.CONTACT_MECH_ID = ocm.CONTACT_MECH_ID
-        LEFT JOIN
-    person p ON pcm.PARTY_ID = p.PARTY_ID
-        LEFT JOIN
-    postal_address pa ON pa.CONTACT_MECH_ID = ocm.CONTACT_MECH_ID
-WHERE
-    ocm.CONTACT_MECH_PURPOSE_TYPE_ID = 'SHIPPING_LOCATION';
--- and oh.ENTRY_DATE BETWEEN '2023-10-1 00:00:00' AND '2023-11-01 00:00:00';
+SELECT distinct
+  oh.ORDER_ID,
+  orl.PARTY_ID,
+  CONCAT(p.first_name, ' ', p.last_name) AS CUSTOMER_NAME,
+  pa.ADDRESS1 as STREET_ADDRESS,
+  pa.CITY,
+  pa.STATE_PROVINCE_GEO_ID as STATE_PROVINCE,
+  pa.POSTAL_CODE,
+  tn.COUNTRY_CODE,
+  oh.STATUS_ID as ORDER_STATUS,
+  oh.ORDER_DATE
+FROM order_header oh 
+join order_role orl on oh.ORDER_ID = orl.ORDER_ID 
+join person p on orl.PARTY_ID = p.PARTY_ID
+join order_contact_mech ocm on  oh.ORDER_ID = ocm.ORDER_ID 
+AND ocm.CONTACT_MECH_PURPOSE_TYPE_ID='SHIPPING_LOCATION' 
+join order_contact_mech as oc on oh.ORDER_ID = oc.ORDER_ID AND oc.CONTACT_MECH_PURPOSE_TYPE_ID = "PHONE_SHIPPING"
+join telecom_number   tn on oc.CONTACT_MECH_ID = tn.CONTACT_MECH_ID 
+join postal_address pa on ocm.CONTACT_MECH_ID = pa.CONTACT_MECH_ID
+join order_status  os on oh.ORDER_ID = os.ORDER_ID
+where oh.order_type_id = 'SALES_ORDER'
+AND oh.STATUS_ID IN ('ORDER_COMPLETED','ORDER_CREATED')
+AND os.STATUS_DATETIME BETWEEN '2023-10-01 00:00:00' AND '2023-10-31 23:59:59';
 ```
-**Cost: **
+**Execution Plan: **
+
+
 
 ### 2. Orders from New York
 
@@ -66,33 +67,29 @@ Companies often want region-specific analysis to plan local marketing, staffing,
 - `ORDER_STATUS`
 **SQL:** 
 ```sql
-SELECT 
-    oh.ORDER_ID,
-    CONCAT(p.first_name, ' ', p.last_name) AS CUSTOMER_NAME,
-    pa.ADDRESS1 AS STREET_ADDRESS,
-    pa.CITY,
-    pa.STATE_PROVINCE_GEO_ID AS STATE_PROVINCE,
-    pa.POSTAL_CODE,
-    pa.COUNTRY_GEO_ID COUNTRY_CODE,
-    oh.STATUS_ID AS ORDER_STATUS,
-    oh.ORDER_DATE
-FROM
-    order_header oh
-        JOIN
-    order_contact_mech ocm ON oh.ORDER_ID = ocm.ORDER_ID
-        JOIN
-    party_contact_mech pcm ON pcm.CONTACT_MECH_ID = ocm.CONTACT_MECH_ID
-        LEFT JOIN
-    person p ON pcm.PARTY_ID = p.PARTY_ID
-        LEFT JOIN
-    postal_address pa ON pa.CONTACT_MECH_ID = ocm.CONTACT_MECH_ID
-WHERE
-    ocm.CONTACT_MECH_PURPOSE_TYPE_ID = 'SHIPPING_LOCATION'
-        AND pa.STATE_PROVINCE_GEO_ID = 'NY'
-        AND oh.STATUS_ID = 'ORDER_COMPLETED';
-
+SELECT distinct
+ oh.ORDER_ID,
+ p.FIRST_NAME,
+ p.LAST_NAME,
+ pa.ADDRESS1 as STREET_ADDRESS,
+ pa.CITY,
+ pa.STATE_PROVINCE_GEO_ID as STATE_PROVINCE,
+ pa.POSTAL_CODE,
+ oh.GRAND_TOTAL as TOTAL_AMOUNT,
+ oh.ORDER_DATE,
+ oh.STATUS_ID as ORDER_STATUS
+FROM order_header oh 
+join order_role  orl on orl.ORDER_ID = oh.ORDER_ID
+join person p on orl.PARTY_ID = p.PARTY_ID
+join order_contact_mech ocm on ocm.ORDER_ID = oh.ORDER_ID
+join contact_mech cm on ocm.CONTACT_MECH_ID = cm.CONTACT_MECH_ID
+join postal_address pa on pa.CONTACT_MECH_ID = cm.CONTACT_MECH_ID
+where pa.STATE_PROVINCE_GEO_ID = "NY";
 ```
-**Cost: **
+**Execution Plan: **
+
+
+
 ---
 
 ### 3. Top-Selling Product in New York
@@ -115,21 +112,16 @@ SELECT
     pa.STATE_PROVINCE_GEO_ID AS STATE_PROVINCE,
     SUM(oi.QUANTITY) AS TOTAL_QUANTITY_SOLD,
     SUM(oi.QUANTITY * oi.UNIT_PRICE) AS REVENUE
-FROM
-    order_item oi
-        JOIN
-    product p ON p.PRODUCT_ID = oi.PRODUCT_ID
-        JOIN
-    order_contact_mech ocm ON oi.ORDER_ID = ocm.ORDER_ID
-        LEFT JOIN
-    postal_address pa ON pa.CONTACT_MECH_ID = ocm.CONTACT_MECH_ID
-WHERE
-    pa.STATE_PROVINCE_GEO_ID = 'NY'
-        AND oi.STATUS_ID = 'ITEM_COMPLETED'
-GROUP BY p.PRODUCT_ID , pa.CITY;
-
+FROM order_item oi
+JOIN product p ON p.PRODUCT_ID = oi.PRODUCT_ID
+JOIN order_contact_mech ocm ON oi.ORDER_ID = ocm.ORDER_ID
+LEFT JOIN postal_address pa ON pa.CONTACT_MECH_ID = ocm.CONTACT_MECH_ID
+WHERE pa.STATE_PROVINCE_GEO_ID = 'NY' AND oi.STATUS_ID = 'ITEM_COMPLETED'
+GROUP BY p.PRODUCT_ID, p.INTERNAL_NAME, pa.CITY, pa.STATE_PROVINCE_GEO_ID;
 ```
-**Cost: **
+**Execution Plan: **
+
+
 
 ### 4. Store-Specific (Facility-Wise) Revenue
 
@@ -144,24 +136,19 @@ Different physical or online stores (facilities) may have varying levels of perf
 - `DATE_RANGE` 
 **SQL:** 
 ```sql
-SELECT 
-    f.FACILITY_ID,
-    f.FACILITY_NAME,
-    COUNT(oi.ORDER_ITEM_SEQ_ID) AS TOTAL_ORDERS,
-    SUM(oi.ORDER_ITEM_SEQ_ID * oi.UNIT_PRICE) AS TOTAL_REVENUE
-FROM
-    order_item oi
-        JOIN
-    order_item_ship_group oisg ON oisg.ORDER_ID = oi.ORDER_ID
-        JOIN
-    facility f ON f.FACILITY_ID = oisg.FACILITY_ID
-WHERE
-    oi.STATUS_ID = 'ITEM_COMPLETED'
-        AND oisg.CREATED_STAMP BETWEEN '2000-10-1 00:00:00' AND '2024-10-01 00:00:00'
-GROUP BY f.FACILITY_ID;
-
+select 
+    f.facility_id,
+    f.facility_name,
+    count(oh.order_id) as TOTAL_ORDERS,
+    sum(oh.grand_total) as TOTAL_REVENUE
+from facility f 
+join order_header oh on oh.ORIGIN_FACILITY_ID = f.FACILITY_ID
+where oh.STATUS_ID = "ORDER_COMPLETED"
+group by f.FACILITY_ID , f.FACILITY_NAME;
 ```
-**Cost: **
+**Execution Plan: **
+
+
 
 ## Inventory Management & Transfers
 
@@ -180,26 +167,19 @@ Warehouse managers need to track “shrinkage” such as lost or damaged invento
 **SQL:** 
 ```sql
 SELECT 
-    p.PRODUCT_ID,
-    ii.INVENTORY_ITEM_ID,
-    ii.FACILITY_ID,
-    iid.REASON_ENUM_ID,
-    COUNT(ii.INVENTORY_ITEM_ID) AS TOTAL,
-    iid.EFFECTIVE_DATE
-FROM
-    product p
-        JOIN
-    inventory_item ii ON p.PRODUCT_ID = ii.PRODUCT_ID
-        LEFT JOIN
-    inventory_item_detail iid ON iid.INVENTORY_ITEM_ID = ii.INVENTORY_ITEM_ID
-WHERE
-    iid.REASON_ENUM_ID = 'VAR_DAMAGED'
-        OR iid.REASON_ENUM_ID = 'VAR_LOST'
-        OR iid.REASON_ENUM_ID = 'VAR_stolen'
-GROUP BY ii.INVENTORY_ITEM_ID , iid.INVENTORY_ITEM_DETAIL_SEQ_ID;
+    ii.inventory_item_id,
+    ii.product_id,
+    ii.facility_id,
+    iiv.QUANTITY_ON_HAND_VAR as quantity_lost_or_damaged,
+    iiv.variance_reason_id as reason_code,
+    iiv.created_stamp as TRANSACTION_DATE
+from inventory_item ii
+join inventory_item_variance iiv on ii.INVENTORY_ITEM_ID = iiv.INVENTORY_ITEM_ID AND iiv.VARIANCE_REASON_ID in ("VAR_LOST","VAR_DAMAGED","VAR_STOLEN")
 
 ```
-**Cost: **
+**Execution Plan: **
+
+
 
 ### 6. Low Stock or Out of Stock Items Report
 
@@ -216,25 +196,22 @@ Avoiding out-of-stock situations is critical. This report flags items that have 
 - `DATE_CHECKED`
 **SQL:** 
 ```sql
-SELECT 
-    p.PRODUCT_ID,
-    p.PRODUCT_NAME,
-    pf.FACILITY_ID,
-    ii.AVAILABLE_TO_PROMISE_TOTAL,
+select 
+    p.product_id,
+    p.product_name,
+    ii.facility_id,
     ii.QUANTITY_ON_HAND_TOTAL,
-    pf.MINIMUM_STOCK AS REORDER_THRESHOLD,
-    ii.LAST_UPDATED_STAMP DATE_CHECKED
-FROM
-    inventory_item ii
-        JOIN
-    product p ON p.PRODUCT_ID = ii.PRODUCT_ID
-        JOIN
-    product_facility pf ON pf.PRODUCT_ID = p.PRODUCT_ID
-WHERE
-    pf.MINIMUM_STOCK > ii.QUANTITY_ON_HAND_TOTAL
-        AND QUANTITY_ON_HAND_TOTAL IS NOT NULL;
+    ii.AVAILABLE_TO_PROMISE_TOTAL,
+    pf.minimum_stock as  reorder_threshold,
+    current_timestamp() as Date_checked
+from inventory_item ii
+join product p on ii.PRODUCT_ID = p.PRODUCT_ID
+join product_facility pf on p.PRODUCT_ID = pf.PRODUCT_ID and ii.FACILITY_ID = pf.FACILITY_ID
+where ii.QUANTITY_ON_HAND_TOTAL <= pf.MINIMUM_STOCK or ii.QUANTITY_ON_HAND_TOTAL = 0;
 ```
-**Cost: **
+**Execution Plan: **
+
+
 
 ### 7. Retrieve the Current Facility (Physical or Virtual) of Open Orders
 
@@ -250,22 +227,21 @@ The business wants to know where open orders are currently assigned, whether in 
 **SQL:** 
 ```sql
 SELECT 
-    oi.ORDER_ID,
-    oi.STATUS_ID,
-    pf.FACILITY_ID,
+    oh.ORDER_ID,
+    oh.STATUS_ID as ORDER_STATUS,
+    f.FACILITY_ID,
     f.FACILITY_NAME,
-    f.FACILITY_TYPE_ID,
-    ft.PARENT_TYPE_ID
-FROM
-    order_item oi
-        JOIN
-    product_facility pf ON pf.PRODUCT_ID = oi.PRODUCT_ID
-        JOIN
-    facility f ON f.FACILITY_ID = pf.FACILITY_ID
-        JOIN
-    facility_type ft ON ft.FACILITY_TYPE_ID = f.FACILITY_TYPE_ID;
+    f.FACILITY_TYPE_ID
+FROM order_header oh
+join order_item oi on oi.order_id = oh.order_id
+join order_item_ship_group_assoc  on oi.ORDER_ID = oisga.ORDER_ID and oi.order_item_seq_id = oisga.order_item_seq_id
+join order_item_ship_group oisg on oisga.ORDER_ID = oisg.ORDER_ID and oisga.ship_group_seq_id = oisg.ship_group_seq_id
+join facility f on oisg.FACILITY_ID = f.FACILITY_ID
+where oh.STATUS_ID in ('ORDER_CREATED' , 'ORDER_APPROVED');
 ```
-**Cost: **
+**Execution Plan: **
+
+
 
 ### 8. Items Where QOH and ATP Differ
 
@@ -281,22 +257,18 @@ Sometimes the **Quantity on Hand (QOH)** doesn’t match the **Available to Prom
 **SQL:** 
 ```sql
 SELECT 
-    p.PRODUCT_ID,
-    pf.FACILITY_ID,
-    ii.AVAILABLE_TO_PROMISE_TOTAL,
-    ii.QUANTITY_ON_HAND_TOTAL,
-    (ii.QUANTITY_ON_HAND_TOTAL - ii.AVAILABLE_TO_PROMISE_TOTAL) AS DIFFERENCE
-FROM
-    inventory_item ii
-        JOIN
-    product p ON p.PRODUCT_ID = ii.PRODUCT_ID
-        JOIN
-    product_facility pf ON pf.PRODUCT_ID = p.PRODUCT_ID
-WHERE
-    pf.MINIMUM_STOCK > ii.QUANTITY_ON_HAND_TOTAL
-        AND QUANTITY_ON_HAND_TOTAL != 0;
+    PRODUCT_ID,
+    FACILITY_ID,
+    SUM(AVAILABLE_TO_PROMISE_TOTAL) as AVAILABLE_TO_PROMISE,
+    sum(QUANTITY_ON_HAND_TOTAL) as QUANTITY_ON_HAND,
+    (sum(QUANTITY_ON_HAND_TOTAL) - SUM(AVAILABLE_TO_PROMISE_TOTAL)) AS DIFFERENCE
+FROM inventory_item ii
+group by PRODUCT_ID, FACILITY_ID
+having sum(QUANTITY_ON_HAND_TOTAL) <> SUM(AVAILABLE_TO_PROMISE_TOTAL)
 ```
-**Cost: **
+**Execution Plan: **
+
+
 
 ### 9. Order Item Current Status Changed Date-Time
 
@@ -320,7 +292,9 @@ SELECT
 FROM
     ORDER_STATUS;
 ```
-**Cost: **
+**Execution Plan: **
+
+
 
 ### 10. Total Orders by Sales Channel
 
@@ -337,10 +311,11 @@ Marketing and sales teams want to see how many orders come from each channel (e.
 SELECT 
     SALES_CHANNEL_ENUM_ID,
     COUNT(order_id) AS TOTAL_ORDERS,
-    GRAND_TOTAL AS TOTAL_REVENUE,
-    ENTRY_DATE AS REPORTING_PERIOD
-FROM
-    order_header
-GROUP BY ORDER_ID;
+    SUM(GRAND_TOTAL) AS TOTAL_REVENUE,
+    current_timestamp() AS REPORTING_PERIOD
+FROM order_header
+GROUP BY SALES_CHANNEL_ENUM_ID;
 ```
-**Cost: **
+**Execution Plan: **
+
+

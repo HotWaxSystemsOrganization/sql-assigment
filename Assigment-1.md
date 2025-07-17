@@ -102,6 +102,9 @@ FROM
 
 **Execution Plan:**
 
+<img width="362" height="337" alt="ag-03" src="https://github.com/user-attachments/assets/03b942ad-f0fd-4522-a56e-55d61f12eaaf" />
+
+
 ### 4 Product IDs Across Systems
 
 **Business Problem:**  
@@ -116,16 +119,18 @@ To sync an order or product across multiple systems (e.g., Shopify, HotWax, ERP/
 **SQL :** 
 ```SQL
 SELECT 
-    p.PRODUCT_ID, gi.ID_VALUE AS ERP_ID, sp.SHOPIFY_PRODUCT_ID
-FROM
-    good_identification gi
-        JOIN
-    product p ON gi.PRODUCT_ID = p.PRODUCT_ID
-        JOIN
-    shopify_product sp ON sp.PRODUCT_ID = p.PRODUCT_ID;
+    p.PRODUCT_ID, 
+    erpgi.ID_VALUE AS ERP_ID, 
+    spgi.ID_VALUE AS SHOPIFY_PRODUCT_ID
+FROM product p
+JOIN good_identification erpgi ON erpgi.PRODUCT_ID = p.PRODUCT_ID  and erpgi.GOOD_IDENTIFICATION_TYPE_ID = 'ERP_ID'
+JOIN good_identification spgi ON spgi.PRODUCT_ID = p.PRODUCT_ID and spgi.GOOD_IDENTIFICATION_TYPE_ID = 'SHOPIFY_PROD_ID';
 ```
 
 **Execution Plan:**
+
+<img width="587" height="334" alt="AG-04" src="https://github.com/user-attachments/assets/a586cee4-5f86-4810-aefb-11d1948a6f17" />
+
 
 ### 5 Completed Orders in August 2023
 
@@ -148,34 +153,31 @@ After running similar reports for a previous month, you now need all completed o
 
 **SQL :** 
 ```SQL
-SELECT 
-    p.PRODUCT_ID,
-    p.PRODUCT_TYPE_ID,
-    oh.PRODUCT_STORE_ID,
-    oi.QUANTITY AS TOTAL_QUANTITY,
-    p.INTERNAL_NAME,
-    f.FACILITY_ID,
-    oi.EXTERNAL_ID,
-    f.FACILITY_TYPE_ID,
-    ohis.ORDER_HISTORY_ID,
-    oh.ORDER_ID,
-    oi.ORDER_ITEM_SEQ_ID,
-    ohis.SHIP_GROUP_SEQ_ID
-FROM
-    order_header oh
-        JOIN
-    order_item oi ON oh.ORDER_ID = oi.ORDER_ID
-        AND oh.STATUS_ID = 'ORDER_COMPLETED'
-        JOIN
-    order_history ohis ON ohis.ORDER_ITEM_SEQ_ID = oi.ORDER_ITEM_SEQ_ID
-        AND ohis.CREATED_DATE BETWEEN '2023-08-1 00:00:00' AND '2023-09-01 00:00:01'
-        JOIN
-    product p ON p.PRODUCT_ID = oi.PRODUCT_ID
-        JOIN
-    facility f ON f.FACILITY_ID = oh.ORIGIN_FACILITY_ID;
+select p.product_id,
+       p.product_type_id,
+       oh.product_store_id,
+       oi.quantity AS TotalQuantity,
+       p.internal_name,
+       f.facility_id,
+       f.external_id,
+       f.facility_type_id,
+       orh.order_history_id,
+       orh.order_id,
+       orh.order_item_seq_id,
+       orh.ship_group_seq_id
+from Order_Header oh JOIN order_item oi ON oi.order_id=oh.order_id
+JOIN product p ON p.product_id=oi.product_id 
+JOIN order_history orh ON orh.order_id=oi.order_id and oi.ORDER_ITEM_SEQ_ID = orh.ORDER_ITEM_SEQ_ID
+JOIN order_item_ship_group oisg ON oisg.ship_group_seq_id=oi.ship_group_seq_id and oisg.order_id=oi.order_id
+JOIN facility f ON f.facility_id=oisg.facility_id 
+JOIN order_status os ON os.order_id=oh.order_id
+WHERE os.status_id='ORDER_COMPLETED' and date(os.status_datetime)>=date('2023-08-01') AND date(os.status_datetime)<=date('2023-08-31');
 ```
 
 **Execution Plan:**
+
+<img width="1339" height="333" alt="ag-05" src="https://github.com/user-attachments/assets/69968e92-65c3-4539-b83e-a5559b57ae4b" />
+
 
 ### 6 Newly Created Sales Orders and Payment Methods
 
@@ -205,6 +207,9 @@ FROM
 
 **Execution Plan:**
 
+<img width="537" height="337" alt="ag-06" src="https://github.com/user-attachments/assets/24f6e3b1-5ca4-46b5-8c95-94ffa5916c4d" />
+
+
 ### 7 Payment Captured but Not Shipped
 
 **Business Problem:**  
@@ -218,19 +223,22 @@ Finance teams want to ensure revenue is recognized properly. If payment is captu
 
 **SQL :** 
 ```SQL
-SELECT 
-    oh.ORDER_ID, oh.STATUS_ID, opp.STATUS_ID, s.STATUS_ID
-FROM
-    order_header oh
-        JOIN
-    order_payment_preference opp ON opp.ORDER_ID = oh.ORDER_ID
-        JOIN
-    item_issuance ii ON opp.ORDER_ID = ii.ORDER_ID
-        JOIN
-    shipment s ON s.SHIPMENT_ID = ii.SHIPMENT_ID;
+SELECT
+    oh.ORDER_ID,
+    oh.STATUS_ID AS ORDER_STATUS,
+    opp.STATUS_ID AS PAYMENT_STATUS,
+    sh.STATUS_ID AS SHIPMENT_STATUS
+FROM order_header oh
+JOIN order_payment_preference opp ON oh.ORDER_ID = opp.ORDER_ID 
+JOIN order_shipment os ON oh.ORDER_ID = os.ORDER_ID 
+JOIN shipment sh ON os.SHIPMENT_ID = sh.SHIPMENT_ID 
+WHERE opp.STATUS_ID = "PAYMENT_SETTLED" AND sh.STATUS_ID != "SHIPMENT_SHIPPED";
 ```
 
 **Execution Plan:**
+
+![Uploading ag-07.png…]()
+
 
 ### 8 Orders Completed Hourly
 
@@ -243,20 +251,22 @@ Operations teams may want to see how orders complete across the day to schedule 
 
 **SQL :** 
 ```SQL
-SELECT 
-    DATE(oh.entry_date) AS dates,
-    HOUR(oh.entry_date) AS hours,
-    COUNT(oh.ORDER_ID) AS TOTAL_ORDERS
-FROM
-    order_header oh
-WHERE
-    oh.STATUS_ID = 'ORDER_COMPLETED'
-        AND entry_date <= CURRENT_DATE()
-GROUP BY dates , hours
-ORDER BY dates , hours;
+SELECT
+    oh.ORDER_ID,
+    oh.STATUS_ID AS ORDER_STATUS,
+    opp.STATUS_ID AS PAYMENT_STATUS,
+    sh.STATUS_ID AS SHIPMENT_STATUS
+FROM order_header oh
+JOIN order_payment_preference opp ON oh.ORDER_ID = opp.ORDER_ID 
+JOIN order_shipment os ON oh.ORDER_ID = os.ORDER_ID 
+JOIN shipment sh ON os.SHIPMENT_ID = sh.SHIPMENT_ID 
+WHERE opp.STATUS_ID = "PAYMENT_SETTLED" AND sh.STATUS_ID != "SHIPMENT_SHIPPED";
 ```
 
 **Execution Plan:**
+
+<img width="752" height="337" alt="AG-08" src="https://github.com/user-attachments/assets/6822f3e2-4a21-4abd-b37d-6c44931d010a" />
+
 
 ### 9 BOPIS Orders Revenue (Last Year)
 
@@ -282,6 +292,9 @@ FROM
 
 **Execution Plan:**
 
+<img width="386" height="336" alt="AG-09" src="https://github.com/user-attachments/assets/c86f5d16-e9aa-4138-83f9-1226d821dddc" />
+
+
 ### 10 Canceled Orders (Last Month)
 
 **Business Problem:**  
@@ -293,21 +306,18 @@ The merchandising team needs to know how many orders were canceled in the previo
 
 **SQL :** 
 ```SQL
-SELECT 
-    COUNT(iid.REASON_ENUM_ID) AS TOTAL_ORDERS,
-    iid.REASON_ENUM_ID AS CANCELATION_REASON
-FROM
-    order_header oh
-        JOIN
-    inventory_item_detail iid ON iid.ORDER_ID = oh.ORDER_ID
-WHERE
-    oh.STATUS_ID = 'ORDER_CANCELLED'
-        AND MONTH(oh.entry_date) = MONTH(CURRENT_DATE()) - 1
-        AND YEAR(oh.entry_date) = YEAR(CURRENT_DATE())
-GROUP BY iid.REASON_ENUM_ID;      
+select 
+  count(*) as TOTAL_ORDER, 
+  os.CHANGE_REASON 
+from order_status os
+where os.status_id = 'ORDER_CANCELLED' and date(STATUS_DATETIME)<="2025-05-31" and date(STATUS_DATETIME)>"2025-04-30"
+group by os.CHANGE_REASON;
 ```
 
 **Execution Plan:**
+
+<img width="211" height="304" alt="AG-10" src="https://github.com/user-attachments/assets/f539edfb-137c-435e-83c6-51a4a8a9514d" />
+
 
 ### 11 Product Threshold Value
 
@@ -322,10 +332,12 @@ The retailer has set a threshild value for products that are sold online, in ord
 ```SQL
 SELECT 
     product_id, minimum_stock AS THRESHOLD
-FROM
-    product_facility pf
-WHERE
-    minimum_stock IS NOT NULL;
+FROM product_facility pf
+WHERE minimum_stock IS NOT NULL;
 ```
 
 **Execution Plan:**
+
+<img width="161" height="201" alt="ag-11" src="https://github.com/user-attachments/assets/d38ac21c-12b2-4e1a-a252-cf9b82f4824a" />
+
+

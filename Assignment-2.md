@@ -46,7 +46,7 @@ where oh.order_type_id = 'SALES_ORDER'
 AND oh.STATUS_ID IN ('ORDER_COMPLETED','ORDER_CREATED')
 AND os.STATUS_DATETIME BETWEEN '2023-10-01 00:00:00' AND '2023-10-31 23:59:59';
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="1490" height="421" alt="1" src="https://github.com/user-attachments/assets/a81dbd67-2977-4ede-b91a-99efaf6d2f6a" />
 
@@ -87,7 +87,7 @@ join contact_mech cm on ocm.CONTACT_MECH_ID = cm.CONTACT_MECH_ID
 join postal_address pa on pa.CONTACT_MECH_ID = cm.CONTACT_MECH_ID
 where pa.STATE_PROVINCE_GEO_ID = "NY";
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="1138" height="421" alt="2" src="https://github.com/user-attachments/assets/357ac65b-488b-4ccc-b20b-94cbb34ffad0" />
 
@@ -121,7 +121,7 @@ LEFT JOIN postal_address pa ON pa.CONTACT_MECH_ID = ocm.CONTACT_MECH_ID
 WHERE pa.STATE_PROVINCE_GEO_ID = 'NY' AND oi.STATUS_ID = 'ITEM_COMPLETED'
 GROUP BY p.PRODUCT_ID, p.INTERNAL_NAME, pa.CITY, pa.STATE_PROVINCE_GEO_ID;
 ```
-**Execution Plan: **
+**<img width="161" height="304" alt="10" src="https://github.com/user-attachments/assets/68c40e1e-7236-4064-8395-a5a1c9f39d4f" />**
 
 <img width="788" height="421" alt="3" src="https://github.com/user-attachments/assets/b4506a13-100c-4228-852e-2c3dd8040536" />
 
@@ -149,7 +149,7 @@ join order_header oh on oh.ORIGIN_FACILITY_ID = f.FACILITY_ID
 where oh.STATUS_ID = "ORDER_COMPLETED"
 group by f.FACILITY_ID , f.FACILITY_NAME;
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="386" height="421" alt="4" src="https://github.com/user-attachments/assets/c883d093-7f55-4f89-a9f0-805e875de1a5" />
 
@@ -181,7 +181,7 @@ from inventory_item ii
 join inventory_item_variance iiv on ii.INVENTORY_ITEM_ID = iiv.INVENTORY_ITEM_ID AND iiv.VARIANCE_REASON_ID in ("VAR_LOST","VAR_DAMAGED","VAR_STOLEN")
 
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="336" height="328" alt="5" src="https://github.com/user-attachments/assets/d3405c67-ea47-4732-81de-cc7e64dddcb9" />
 
@@ -214,7 +214,7 @@ join product p on ii.PRODUCT_ID = p.PRODUCT_ID
 join product_facility pf on p.PRODUCT_ID = pf.PRODUCT_ID and ii.FACILITY_ID = pf.FACILITY_ID
 where ii.QUANTITY_ON_HAND_TOTAL <= pf.MINIMUM_STOCK or ii.QUANTITY_ON_HAND_TOTAL = 0;
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="511" height="328" alt="6" src="https://github.com/user-attachments/assets/fd7a7c89-c73a-4450-bbb9-d5b59ac7ab83" />
 
@@ -245,7 +245,7 @@ join order_item_ship_group oisg on oisga.ORDER_ID = oisg.ORDER_ID and oisga.ship
 join facility f on oisg.FACILITY_ID = f.FACILITY_ID
 where oh.STATUS_ID in ('ORDER_CREATED' , 'ORDER_APPROVED');
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="927" height="332" alt="7" src="https://github.com/user-attachments/assets/a8d912a9-9ccb-442e-8971-f48c2f53d9ef" />
 
@@ -272,7 +272,7 @@ FROM inventory_item ii
 group by PRODUCT_ID, FACILITY_ID
 having sum(QUANTITY_ON_HAND_TOTAL) <> SUM(AVAILABLE_TO_PROMISE_TOTAL);
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="161" height="284" alt="8" src="https://github.com/user-attachments/assets/f9084d9f-640e-4397-8916-900864c2894e" />
 
@@ -299,7 +299,7 @@ SELECT
 FROM
     ORDER_STATUS;
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="161" height="199" alt="9" src="https://github.com/user-attachments/assets/6eed29ca-db59-45a9-8676-01baea6453bf" />
 
@@ -324,7 +324,7 @@ SELECT
 FROM order_header
 GROUP BY SALES_CHANNEL_ENUM_ID;
 ```
-**Execution Plan: **
+**Execution Plan:**
 
 <img width="161" height="304" alt="10" src="https://github.com/user-attachments/assets/3ee100b9-a223-4912-aa8e-dfb988407c54" />
 

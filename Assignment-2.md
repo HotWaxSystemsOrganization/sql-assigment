@@ -121,9 +121,9 @@ LEFT JOIN postal_address pa ON pa.CONTACT_MECH_ID = ocm.CONTACT_MECH_ID
 WHERE pa.STATE_PROVINCE_GEO_ID = 'NY' AND oi.STATUS_ID = 'ITEM_COMPLETED'
 GROUP BY p.PRODUCT_ID, p.INTERNAL_NAME, pa.CITY, pa.STATE_PROVINCE_GEO_ID;
 ```
-**<img width="161" height="304" alt="10" src="https://github.com/user-attachments/assets/68c40e1e-7236-4064-8395-a5a1c9f39d4f" />**
+**Execution Plan:**
 
-<img width="788" height="421" alt="3" src="https://github.com/user-attachments/assets/b4506a13-100c-4228-852e-2c3dd8040536" />
+<img width="788" height="421" alt="3" src="https://github.com/user-attachments/assets/b96cf1eb-4c54-4b0a-a36c-1b5044830310" />
 
 
 ### 4. Store-Specific (Facility-Wise) Revenue
